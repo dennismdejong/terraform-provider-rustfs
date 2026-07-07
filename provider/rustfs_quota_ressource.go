@@ -91,7 +91,6 @@ func (r *quotaRessource) Create(ctx context.Context, req resource.CreateRequest,
 		return
 	}
 	tflog.Trace(ctx, "created a resource")
-	// plan.ID = types.StringValue(account.AccessKey)
 	resp.Diagnostics.Append(resp.State.Set(ctx, &plan)...)
 }
 
@@ -109,7 +108,14 @@ func (r *quotaRessource) Read(ctx context.Context, req resource.ReadRequest, res
 		return
 	}
 	// Read
-	read, _ := r.client.RustClient.ReadQuota(state.Bucket.ValueString())
+	read, err := r.client.RustClient.ReadQuota(state.Bucket.ValueString())
+	if err != nil {
+		resp.Diagnostics.AddError(
+			"Error reading bucket quota",
+			"Could not read bucket quota, unexpected error: "+err.Error(),
+		)
+		return
+	}
 	// Save update status
 	state.Quota = types.Int64Value(int64(read.Quota))
 	resp.Diagnostics.Append(resp.State.Set(ctx, &state)...)
