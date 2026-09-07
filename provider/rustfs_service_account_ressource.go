@@ -8,6 +8,7 @@ import (
 	"github.com/hashicorp/terraform-plugin-framework/resource"
 	"github.com/hashicorp/terraform-plugin-framework/resource/schema"
 	"github.com/hashicorp/terraform-plugin-framework/resource/schema/planmodifier"
+	"github.com/hashicorp/terraform-plugin-framework/resource/schema/stringdefault"
 	"github.com/hashicorp/terraform-plugin-framework/resource/schema/stringplanmodifier"
 	"github.com/hashicorp/terraform-plugin-framework/types"
 	"github.com/hashicorp/terraform-plugin-log/tflog"
@@ -15,11 +16,14 @@ import (
 )
 
 type serviceAccountResourceModel struct {
-	AccessKey   types.String `tfsdk:"access_key"`
-	SecretKey   types.String `tfsdk:"secret_key"`
-	Name        types.String `tfsdk:"name"`
-	Description types.String `tfsdk:"description"`
-	TargetUser  types.String `tfsdk:"user"`
+	AccessKey     types.String `tfsdk:"access_key"`
+	SecretKey     types.String `tfsdk:"secret_key"`
+	Name          types.String `tfsdk:"name"`
+	Description   types.String `tfsdk:"description"`
+	TargetUser    types.String `tfsdk:"user"`
+	Expiration    types.String `tfsdk:"expiration"`
+	Policy        types.String `tfsdk:"policy"`
+	ImpliedPolicy types.Bool   `tfsdk:"implied_policy"`
 }
 
 // Ensure the implementation satisfies the expected interfaces.
@@ -72,6 +76,23 @@ func (r *ServiceAccountRessource) Schema(_ context.Context, _ resource.SchemaReq
 					stringplanmodifier.RequiresReplace(),
 				},
 			},
+			"expiration": schema.StringAttribute{
+				Optional:            true,
+				Computed:            true,
+				Default:             stringdefault.StaticString("9999-01-01T00:00:00.000Z"),
+				MarkdownDescription: "Expiration timestamp in RFC3339 format (e.g. 2030-01-01T00:00:00.000Z). Defaults to 9999-01-01T00:00:00.000Z.",
+			},
+			"policy": schema.StringAttribute{
+				Optional:            true,
+				MarkdownDescription: "Canned policy the service account is scoped to. Changing this forces a new resource to be created.",
+				PlanModifiers: []planmodifier.String{
+					stringplanmodifier.RequiresReplace(),
+				},
+			},
+			"implied_policy": schema.BoolAttribute{
+				Computed:            true,
+				MarkdownDescription: "Whether the implied policy is used (true when no explicit policy is set).",
+			},
 		},
 	}
 }
@@ -109,6 +130,8 @@ func (r *ServiceAccountRessource) Create(ctx context.Context, req resource.Creat
 		SecretKey:   plan.SecretKey.ValueString(),
 		Description: plan.Description.ValueString(),
 		TargetUser:  plan.TargetUser.ValueString(),
+		Expiration:  plan.Expiration.ValueString(),
+		Policy:      plan.Policy.ValueString(),
 	}
 	err := r.client.RustClient.CreateServiceAccount(account)
 	if err != nil {
@@ -119,6 +142,7 @@ func (r *ServiceAccountRessource) Create(ctx context.Context, req resource.Creat
 		return
 	}
 	tflog.Trace(ctx, "created a resource")
+	plan.ImpliedPolicy = types.BoolValue(plan.Policy.ValueString() == "")
 	resp.Diagnostics.Append(resp.State.Set(ctx, &plan)...)
 
 }
@@ -150,6 +174,13 @@ func (r *ServiceAccountRessource) Read(ctx context.Context, req resource.ReadReq
 
 	state.Name = types.StringValue(actual.Name)
 	state.Description = types.StringValue(actual.Description)
+	if actual.Expiration != "" {
+		state.Expiration = types.StringValue(actual.Expiration)
+	}
+	if actual.Policy != "" {
+		state.Policy = types.StringValue(actual.Policy)
+	}
+	state.ImpliedPolicy = types.BoolValue(actual.ImpliedPolicy)
 	// Save update status
 	resp.Diagnostics.Append(resp.State.Set(ctx, &state)...)
 	if resp.Diagnostics.HasError() {
@@ -172,6 +203,8 @@ func (r *ServiceAccountRessource) Update(ctx context.Context, req resource.Updat
 		SecretKey:   plan.SecretKey.ValueString(),
 		Description: plan.Description.ValueString(),
 		TargetUser:  plan.TargetUser.ValueString(),
+		Expiration:  plan.Expiration.ValueString(),
+		Policy:      plan.Policy.ValueString(),
 	}
 	err := r.client.RustClient.UpdateServiceAccount(account)
 	if err != nil {
@@ -184,6 +217,8 @@ func (r *ServiceAccountRessource) Update(ctx context.Context, req resource.Updat
 
 	plan.Name = types.StringValue(account.Name)
 	plan.Description = types.StringValue(account.Description)
+	plan.Expiration = types.StringValue(account.Expiration)
+	plan.ImpliedPolicy = types.BoolValue(account.Policy == "")
 
 	diags = resp.State.Set(ctx, plan)
 	resp.Diagnostics.Append(diags...)
