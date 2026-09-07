@@ -59,15 +59,25 @@ resource "rustfs_group_policy_attachment" "test" {
 `, groupName, policyName, groupName)
 }
 
-// The admin API exposes no read-back for group policy attachments, so
-// destruction is verified against the Terraform state only.
+// The admin API exposes no dedicated read-back for group policy attachments, so
+// destruction is verified against the group's own policy mapping: after the
+// attachment is removed the group must either be gone or carry no policy.
 func testAccCheckGroupPolicyAttachmentDestroy(s *terraform.State) error {
+	client := testAccRustClient()
 	for _, rs := range s.RootModule().Resources {
 		if rs.Type != "rustfs_group_policy_attachment" {
 			continue
 		}
-		if rs.Primary.ID != "" {
-			return fmt.Errorf("attachment %s still in state", rs.Primary.ID)
+		group := rs.Primary.Attributes["group"]
+		if group == "" {
+			continue
+		}
+		info, err := client.GetGroup(group)
+		if err != nil {
+			continue
+		}
+		if info.Policy != "" {
+			return fmt.Errorf("group %s still has policy %q attached", group, info.Policy)
 		}
 	}
 	return nil
