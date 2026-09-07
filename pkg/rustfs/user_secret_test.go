@@ -36,8 +36,11 @@ func TestSetUserSecretKey(t *testing.T) {
 	if !strings.Contains(gotPath, "/set-user-secret-key") || !strings.Contains(gotPath, "accessKey=alice") {
 		t.Errorf("wrong request: %s", gotPath)
 	}
-	if !strings.Contains(gotBody, "new-secret") {
+	if !strings.Contains(gotBody, `"secret_key":"new-secret"`) {
 		t.Errorf("wrong body: %s", gotBody)
+	}
+	if strings.Contains(gotBody, "secretKey") {
+		t.Errorf("body must use snake_case secret_key, got: %s", gotBody)
 	}
 }
 

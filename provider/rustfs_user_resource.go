@@ -188,6 +188,10 @@ func (r *RustfsUserRessource) Update(ctx context.Context, req resource.UpdateReq
 		}
 	}
 
+	if plan.Name.IsNull() || plan.Name.ValueString() == "" {
+		plan.Name = types.StringValue(plan.AccessKey.ValueString())
+	}
+
 	resp.Diagnostics.Append(resp.State.Set(ctx, &plan)...)
 }
 

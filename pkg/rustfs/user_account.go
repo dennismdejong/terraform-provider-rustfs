@@ -127,7 +127,7 @@ func (c *RustfsAdmin) SetUserSecretKey(accessKey, secretKey string) error {
 	urlValues := make(url.Values)
 	urlValues.Set("accessKey", accessKey)
 	body := struct {
-		SecretKey string `json:"secretKey"`
+		SecretKey string `json:"secret_key"`
 	}{SecretKey: secretKey}
 	bytes, err := json.Marshal(body)
 	if err != nil {
