@@ -123,7 +123,7 @@ func (c *RustfsAdmin) DeleteServiceAccount(account ServiceAccount) error {
 func normalizeServiceAccount(account *ServiceAccount) {
 	// Set some defaults
 	if account.Expiration == "" {
-		account.Expiration = "9999-01-01T00:00:00.000Z"
+		account.Expiration = "9999-01-01T00:00:00Z"
 	}
 	if account.Policy == "" {
 		account.ImpliedPolicy = true

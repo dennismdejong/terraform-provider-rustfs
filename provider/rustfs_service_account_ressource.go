@@ -79,12 +79,12 @@ func (r *ServiceAccountRessource) Schema(_ context.Context, _ resource.SchemaReq
 			"expiration": schema.StringAttribute{
 				Optional:            true,
 				Computed:            true,
-				Default:             stringdefault.StaticString("9999-01-01T00:00:00.000Z"),
-				MarkdownDescription: "Expiration timestamp in RFC3339 format (e.g. 2030-01-01T00:00:00.000Z). Defaults to 9999-01-01T00:00:00.000Z.",
+				Default:             stringdefault.StaticString("9999-01-01T00:00:00Z"),
+				MarkdownDescription: "Expiration timestamp in RFC3339 format without fractional seconds (e.g. 2030-01-01T00:00:00Z). Defaults to 9999-01-01T00:00:00Z.",
 			},
 			"policy": schema.StringAttribute{
 				Optional:            true,
-				MarkdownDescription: "Canned policy the service account is scoped to. Changing this forces a new resource to be created.",
+				MarkdownDescription: "IAM policy document (JSON) the service account is scoped to. Changing this forces a new resource to be created.",
 				PlanModifiers: []planmodifier.String{
 					stringplanmodifier.RequiresReplace(),
 				},
@@ -173,14 +173,16 @@ func (r *ServiceAccountRessource) Read(ctx context.Context, req resource.ReadReq
 	}
 
 	state.Name = types.StringValue(actual.Name)
-	state.Description = types.StringValue(actual.Description)
+	if actual.Description != "" {
+		state.Description = types.StringValue(actual.Description)
+	}
 	if actual.Expiration != "" {
 		state.Expiration = types.StringValue(actual.Expiration)
 	}
-	if actual.Policy != "" {
+	state.ImpliedPolicy = types.BoolValue(actual.ImpliedPolicy)
+	if !actual.ImpliedPolicy && state.Policy.IsNull() {
 		state.Policy = types.StringValue(actual.Policy)
 	}
-	state.ImpliedPolicy = types.BoolValue(actual.ImpliedPolicy)
 	// Save update status
 	resp.Diagnostics.Append(resp.State.Set(ctx, &state)...)
 	if resp.Diagnostics.HasError() {
@@ -216,7 +218,9 @@ func (r *ServiceAccountRessource) Update(ctx context.Context, req resource.Updat
 	}
 
 	plan.Name = types.StringValue(account.Name)
-	plan.Description = types.StringValue(account.Description)
+	if account.Description != "" {
+		plan.Description = types.StringValue(account.Description)
+	}
 	plan.Expiration = types.StringValue(account.Expiration)
 	plan.ImpliedPolicy = types.BoolValue(account.Policy == "")
 

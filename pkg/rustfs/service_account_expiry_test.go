@@ -30,8 +30,8 @@ func TestCreateServiceAccountWithExpirySendsExpirationAndPolicy(t *testing.T) {
 		SecretKey:   "s3cret",
 		Name:        "tokens",
 		Description: "readonly",
-		Expiration:  "2030-01-01T00:00:00.000Z",
-		Policy:      "readwrite",
+		Expiration:  "2030-01-01T00:00:00Z",
+		Policy:      `{"Version":"2012-10-17","Statement":[{"Effect":"Allow","Action":["s3:GetObject"],"Resource":["arn:aws:s3:::*"]}]}`,
 		TargetUser:  "alice",
 	}
 	if err := client.CreateServiceAccount(account); err != nil {
@@ -40,7 +40,7 @@ func TestCreateServiceAccountWithExpirySendsExpirationAndPolicy(t *testing.T) {
 	if !strings.Contains(gotPath, "add-service-accounts") {
 		t.Errorf("wrong endpoint, path=%s", gotPath)
 	}
-	for _, want := range []string{`"expiration":"2030-01-01T00:00:00.000Z"`, `"policy":"readwrite"`, `"impliedPolicy":false`} {
+	for _, want := range []string{`"expiration":"2030-01-01T00:00:00Z"`, `"policy":"{\"Version\":\"2012-10-17\"`, `"impliedPolicy":false`} {
 		if !strings.Contains(gotBody, want) {
 			t.Errorf("missing %s in body: %s", want, gotBody)
 		}
@@ -71,7 +71,7 @@ func TestCreateServiceAccountWithExpiryDefaultsImpliedPolicy(t *testing.T) {
 	if err := client.CreateServiceAccount(account); err != nil {
 		t.Fatalf("unexpected error: %v", err)
 	}
-	for _, want := range []string{`"impliedPolicy":true`, `"expiration":"9999-01-01T00:00:00.000Z"`} {
+	for _, want := range []string{`"impliedPolicy":true`, `"expiration":"9999-01-01T00:00:00Z"`} {
 		if !strings.Contains(gotBody, want) {
 			t.Errorf("missing %s in body: %s", want, gotBody)
 		}
@@ -96,12 +96,12 @@ func TestUpdateServiceAccountWithExpirySendsNewExpiration(t *testing.T) {
 
 	account := ServiceAccount{
 		AccessKey:  "sa-test",
-		Expiration: "2031-06-01T00:00:00.000Z",
+		Expiration: "2031-06-01T00:00:00Z",
 	}
 	if err := client.UpdateServiceAccount(account); err != nil {
 		t.Fatalf("unexpected error: %v", err)
 	}
-	if !strings.Contains(gotBody, `"newExpiration":"2031-06-01T00:00:00.000Z"`) {
+	if !strings.Contains(gotBody, `"newExpiration":"2031-06-01T00:00:00Z"`) {
 		t.Errorf("expected newExpiration in body: %s", gotBody)
 	}
 }
