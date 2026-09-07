@@ -40,24 +40,24 @@ func TestAccUserPolicyAttachmentResource(t *testing.T) {
 
 func testAccUserPolicyAttachmentConfig(userName, policyName string) string {
 	return testAccProviderConfig() + fmt.Sprintf(`
-resource "rustfs_user" "test" {
-  access_key = "%s"
-  secret_key = "superSecret123!"
-  policy     = "readonly"
-}
 resource "rustfs_policy" "test" {
   name = "%s"
-  statement {
+  statement = [{
     effect    = "Allow"
     action    = ["s3:GetObject"]
     ressource = ["arn:aws:s3:::accbucket/*"]
-  }
+  }]
+}
+resource "rustfs_user" "test" {
+  access_key = "%s"
+  secret_key = "superSecret123!"
+  policy     = rustfs_policy.test.name
 }
 resource "rustfs_user_policy_attachment" "test" {
   user   = rustfs_user.test.access_key
   policy = rustfs_policy.test.name
 }
-`, userName, policyName)
+`, policyName, userName)
 }
 
 func testAccCheckUserPolicyAttachmentDestroy(s *terraform.State) error {
