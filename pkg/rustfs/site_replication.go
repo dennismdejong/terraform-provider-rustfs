@@ -49,6 +49,7 @@ type SiteReplicationResync struct {
 }
 
 func (c *RustfsAdmin) SiteReplicationAdd(site SiteReplicationSite) error {
+	//#nosec G117 — AccessKey is a public identifier, not a secret
 	body, err := json.Marshal([]SiteReplicationSite{site})
 	if err != nil {
 		return err
@@ -57,6 +58,7 @@ func (c *RustfsAdmin) SiteReplicationAdd(site SiteReplicationSite) error {
 }
 
 func (c *RustfsAdmin) SiteReplicationEdit(site SiteReplicationSite) error {
+	//#nosec G117 — AccessKey is a public identifier, not a secret
 	body, err := json.Marshal([]SiteReplicationSite{site})
 	if err != nil {
 		return err
