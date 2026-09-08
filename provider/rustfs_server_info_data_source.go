@@ -472,13 +472,15 @@ func flattenServers(servers []rustfs.ServerEntry) []serverInfoServerModel {
 			})
 		}
 		out = append(out, serverInfoServerModel{
-			Endpoint:      types.StringValue(s.Endpoint),
-			State:         types.StringValue(s.State),
-			Version:       types.StringValue(s.Version),
-			Uptime:        types.Int64Value(s.Uptime),
-			NumCPU:        types.Int64Value(int64(s.NumCPU)),
-			MaxProcs:      types.Int64Value(int64(s.MaxProcs)),
-			MemAlloc:      types.Int64Value(int64(s.MemStats.Alloc)),
+			Endpoint: types.StringValue(s.Endpoint),
+			State:    types.StringValue(s.State),
+			Version:  types.StringValue(s.Version),
+			Uptime:   types.Int64Value(s.Uptime),
+			NumCPU:   types.Int64Value(int64(s.NumCPU)),
+			MaxProcs: types.Int64Value(int64(s.MaxProcs)),
+			//#nosec G115 — memory stats are byte counts that fit in int64
+			MemAlloc: types.Int64Value(int64(s.MemStats.Alloc)),
+			//#nosec G115 — memory stats are byte counts that fit in int64
 			MemTotalAlloc: types.Int64Value(int64(s.MemStats.TotalAlloc)),
 			Drives:        drives,
 		})
