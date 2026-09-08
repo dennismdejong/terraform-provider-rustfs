@@ -4,6 +4,7 @@ import (
 	"fmt"
 	"os"
 	"testing"
+	"time"
 
 	"github.com/hashicorp/terraform-plugin-testing/helper/acctest"
 	"github.com/hashicorp/terraform-plugin-testing/helper/resource"
@@ -84,9 +85,18 @@ func testAccCheckQuotaExists(n string) resource.TestCheckFunc {
 			return fmt.Errorf("no bucket set")
 		}
 		client := testAccQuotaClient()
-		_, err := client.ReadQuota(bucketName)
-		if err != nil {
-			return fmt.Errorf("quota not found: %s", err)
+
+		// Retry for eventual consistency: bucket usage may not be authoritative yet.
+		maxRetries := 10
+		for i := 0; i < maxRetries; i++ {
+			_, err := client.ReadQuota(bucketName)
+			if err == nil {
+				return nil
+			}
+			if i == maxRetries-1 {
+				return fmt.Errorf("quota not found after %d attempts: %s", maxRetries, err)
+			}
+			time.Sleep(time.Duration(i+1) * 500 * time.Millisecond)
 		}
 		return nil
 	}
