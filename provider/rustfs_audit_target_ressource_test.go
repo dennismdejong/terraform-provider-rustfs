@@ -8,6 +8,7 @@ import (
 	"github.com/hashicorp/terraform-plugin-testing/helper/acctest"
 	"github.com/hashicorp/terraform-plugin-testing/helper/resource"
 	"github.com/hashicorp/terraform-plugin-testing/terraform"
+	"github.com/weinmann-emt/terraform-provider-rustfs/pkg/rustfs"
 )
 
 const auditTargetResourceName = "rustfs_audit_target.test"
@@ -57,13 +58,27 @@ func TestAccAuditTargetResource(t *testing.T) {
 
 // testAccAuditTargetPreCheck verifies the environment and that the running
 // RustFS has the audit module enabled (the admin API rejects target management
-// otherwise). The test skips gracefully when the audit module is disabled.
+// otherwise). The list endpoint succeeds even when the module is disabled, so
+// the check probes an actual create and skips when the server reports the
+// audit module is disabled.
 func testAccAuditTargetPreCheck(t *testing.T) {
 	testAccPreCheck(t)
 
 	client := testAccRustClient()
-	if _, err := client.ListAuditTargets(); err != nil {
-		t.Skipf("audit target management is not available on the running RustFS (audit module disabled?), skipping: %v", err)
+	probe := fmt.Sprintf("tf-audit-probe-%d", acctest.RandInt())
+	probeConfig := []rustfs.AuditTargetKeyValue{
+		{Key: "endpoint", Value: "https://hooks.example.com/webhook/" + probe},
+	}
+	err := client.SetAuditTarget("audit_webhook", probe, probeConfig)
+	if err != nil {
+		if strings.Contains(err.Error(), "audit module is disabled") {
+			t.Skipf("audit module is disabled on the running RustFS; skipping: %v", err)
+		}
+		t.Fatalf("audit target management is not available on the running RustFS, skipping: %v", err)
+	}
+	// Clean up the probe target so it does not linger in the server config.
+	if err := client.ResetAuditTarget("audit_webhook", probe); err != nil {
+		t.Logf("could not clean up audit target probe %s: %v", probe, err)
 	}
 }
 
