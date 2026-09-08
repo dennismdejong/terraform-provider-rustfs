@@ -115,3 +115,45 @@ func testAccSAClient() rustfs.RustfsAdmin {
 		AccessSecret: os.Getenv("RUSTFS_SECRET"),
 	})
 }
+
+func TestAccServiceAccountExpiryPolicyResource(t *testing.T) {
+	accessKey := fmt.Sprintf("tf-test-saexp-%d", acctest.RandInt())
+	resourceName := "rustfs_serviceaccount.test"
+	policyDoc := `{"Version":"2012-10-17","Statement":[{"Effect":"Allow","Action":["s3:GetObject"],"Resource":["arn:aws:s3:::*"]}]}`
+
+	resource.ParallelTest(t, resource.TestCase{
+		PreCheck:                 func() { testAccPreCheck(t) },
+		ProtoV6ProviderFactories: testAccProtoV6ProviderFactories,
+		CheckDestroy:             testAccCheckServiceAccountDestroy,
+		Steps: []resource.TestStep{
+			{
+				Config: testAccServiceAccountExpiryPolicyConfig(accessKey, "2030-01-01T00:00:00Z", policyDoc),
+				Check: resource.ComposeTestCheckFunc(
+					testAccCheckServiceAccountExists(resourceName),
+					resource.TestCheckResourceAttr(resourceName, "access_key", accessKey),
+					resource.TestCheckResourceAttr(resourceName, "expiration", "2030-01-01T00:00:00Z"),
+					resource.TestCheckResourceAttr(resourceName, "policy", policyDoc),
+					resource.TestCheckResourceAttr(resourceName, "implied_policy", "false"),
+				),
+			},
+			{
+				Config: testAccServiceAccountExpiryPolicyConfig(accessKey, "2031-01-01T00:00:00Z", policyDoc),
+				Check: resource.ComposeTestCheckFunc(
+					resource.TestCheckResourceAttr(resourceName, "expiration", "2031-01-01T00:00:00Z"),
+				),
+			},
+		},
+	})
+}
+
+func testAccServiceAccountExpiryPolicyConfig(accessKey, expiration, policy string) string {
+	return testAccProviderConfig() + fmt.Sprintf(`
+resource "rustfs_serviceaccount" "test" {
+  access_key  = "%s"
+  secret_key  = "superSecret123!"
+  name        = "expiryaccount"
+  expiration  = "%s"
+  policy      = %q
+}
+`, accessKey, expiration, policy)
+}

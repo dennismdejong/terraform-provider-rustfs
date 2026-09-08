@@ -24,7 +24,13 @@ Manage ServiceUser/API Keys
 ### Optional
 
 - `description` (String) Short description of the scope we plan to use this token
+- `expiration` (String) Expiration timestamp in RFC3339 format without fractional seconds (e.g. 2030-01-01T00:00:00Z). Defaults to 9999-01-01T00:00:00Z.
+- `policy` (String) IAM policy document (JSON) the service account is scoped to. Changing this forces a new resource to be created.
 - `user` (String) Optional user the token should be scoped to
+
+### Read-Only
+
+- `implied_policy` (Boolean) Whether the implied policy is used (true when no explicit policy is set)
 
 ## Import
 
