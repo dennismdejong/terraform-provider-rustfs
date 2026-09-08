@@ -6,10 +6,11 @@ import (
 	"encoding/xml"
 	"io"
 	"net/url"
+	"strings"
 )
 
 type PublicAccessBlockConfiguration struct {
-	XMLName               xml.Name `xml:"http://s3.amazonaws.com/doc/2006-03-01/ PublicAccessBlockConfiguration"`
+	XMLName               xml.Name `xml:"PublicAccessBlockConfiguration"`
 	BlockPublicAcls       bool     `xml:"BlockPublicAcls"`
 	IgnorePublicAcls      bool     `xml:"IgnorePublicAcls"`
 	BlockPublicPolicy     bool     `xml:"BlockPublicPolicy"`
@@ -66,6 +67,12 @@ func (c *RustfsAdmin) GetBucketPublicAccessBlock(bucket string) (*PublicAccessBl
 
 	var config PublicAccessBlockConfiguration
 	err = xml.Unmarshal(bodyBytes, &config)
+	if err != nil {
+		namespacedBody := strings.Replace(string(bodyBytes), `xmlns="http://s3.amazonaws.com/doc/2006-03-01/"`, "", 1)
+		if namespacedBody != string(bodyBytes) {
+			err = xml.Unmarshal([]byte(namespacedBody), &config)
+		}
+	}
 	if err != nil {
 		return nil, err
 	}

@@ -60,7 +60,7 @@ func TestGetBucketPublicAccessBlock(t *testing.T) {
 			t.Errorf("wrong method: %s", r.Method)
 		}
 		assertPublicAccessBlockQuery(t, r)
-		w.Write([]byte(`<PublicAccessBlockConfiguration xmlns="http://s3.amazonaws.com/doc/2006-03-01/">` +
+		_, _ = w.Write([]byte(`<PublicAccessBlockConfiguration>` +
 			`<BlockPublicAcls>true</BlockPublicAcls>` +
 			`<IgnorePublicAcls>false</IgnorePublicAcls>` +
 			`<BlockPublicPolicy>true</BlockPublicPolicy>` +
@@ -80,10 +80,32 @@ func TestGetBucketPublicAccessBlock(t *testing.T) {
 	}
 }
 
+func TestGetBucketPublicAccessBlockNamespaced(t *testing.T) {
+	client := newTestS3Server(t, func(w http.ResponseWriter, r *http.Request) {
+		_, _ = w.Write([]byte(`<PublicAccessBlockConfiguration xmlns="http://s3.amazonaws.com/doc/2006-03-01/">` +
+			`<BlockPublicAcls>true</BlockPublicAcls>` +
+			`<IgnorePublicAcls>true</IgnorePublicAcls>` +
+			`<BlockPublicPolicy>false</BlockPublicPolicy>` +
+			`<RestrictPublicBuckets>false</RestrictPublicBuckets>` +
+			`</PublicAccessBlockConfiguration>`))
+	})
+
+	cfg, err := client.GetBucketPublicAccessBlock("mybucket")
+	if err != nil {
+		t.Fatalf("unexpected error: %v", err)
+	}
+	if !cfg.BlockPublicAcls || !cfg.IgnorePublicAcls {
+		t.Error("expected BlockPublicAcls and IgnorePublicAcls to be true")
+	}
+	if cfg.BlockPublicPolicy || cfg.RestrictPublicBuckets {
+		t.Error("expected BlockPublicPolicy and RestrictPublicBuckets to be false")
+	}
+}
+
 func TestGetBucketPublicAccessBlockNotFound(t *testing.T) {
 	client := newTestS3Server(t, func(w http.ResponseWriter, r *http.Request) {
 		w.WriteHeader(http.StatusNotFound)
-		w.Write([]byte(`<Error><Code>NoSuchPublicAccessBlockConfiguration</Code></Error>`))
+		_, _ = w.Write([]byte(`<Error><Code>NoSuchPublicAccessBlockConfiguration</Code></Error>`))
 	})
 
 	_, err := client.GetBucketPublicAccessBlock("mybucket")
